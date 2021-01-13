@@ -1,0 +1,72 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+class Solution {
+    static void Main(String[] args) {
+        new Short_Palindrome().Solve();
+    }
+}
+
+class Short_Palindrome
+{
+	public void Solve()
+	{
+		var s = Console.ReadLine();
+		var r = 26;
+		var l = s.Length;
+		var a = new int[l];
+		var t = new int[l];
+		var b = new long[l + 1, r];
+		var c = new int[r];
+		var m = 1000000007;
+		var n = 0;
+
+		for (var i = 0; i < l; ++i)
+		{
+			a[i] = (int)s[i] - 'a';
+		}
+
+		for (var i = 0; i < r; ++i)
+		{
+			c[i] = l;
+		}
+
+		for (var i = l - 1; i >= 0; --i)
+		{
+			t[i] = c[a[i]];
+			c[a[i]] = i;
+		}
+
+		for (var i = 0; i < r; ++i)
+		{
+			c[i] = 0;
+		}
+
+		for (var i = l - 1; i >= 0; --i)
+		{
+			for (int j = 0, k = t[i]; j < r; ++j)
+			{
+				b[i, j] = b[k, j] + c[j];
+			}
+
+			++c[a[i]];
+		}
+
+		for (var i = 0; i < r; ++i)
+		{
+			c[i] = 0;
+		}
+
+		for (var i = 0; i < l; ++i)
+		{
+			for (int j = 0, k = t[i]; j < r; ++j)
+			{
+				n = (int)((n + (long)c[j] * b[k, j]) % m);
+			}
+
+			++c[a[i]];
+		}
+
+		Console.WriteLine(n);
+	}
+}

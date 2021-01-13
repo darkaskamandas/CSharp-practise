@@ -1,0 +1,117 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+
+    static void Main(String[] args) {
+		new Gena_Playing_Hanoi().Solve();
+    }
+}
+
+class Gena_Playing_Hanoi
+{
+	public void Solve()
+	{
+		var a =
+			Console.In.ReadToEnd()
+			.Split(new char[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+			.Select(s => int.Parse(s))
+			.ToArray();
+		var l = a[0];
+		var m = new int[1 << 2 * l];
+		var f = new bool[1 << 2 * l];
+		var e = 0;
+		var q = new SortedSet<P>(new C());
+		var d = new int[4];
+		P p;
+
+		for (var i = 1; i < m.Length; ++i)
+		{
+			m[i] = 1 << 2 * l;
+		}
+
+		for (var i = 1; i < a.Length; ++i)
+		{
+			e |= (a[i] - 1) << 2 * (i - 1);
+		}
+
+		p.s = 0;
+		p.m = 0;
+		q.Add(p);
+
+		while (q.Count > 0)
+		{
+			var c = q.First(); q.Remove(c);
+
+			if (c.s == e)
+			{
+				break;
+			}
+
+			if (f[c.s])
+			{
+				continue;
+			}
+
+			f[c.s] = true;
+
+			d[0] = d[1] = d[2] = d[3] = 2 * l;
+
+			for (var i = 2 * l - 2; i >= 0; i -= 2)
+			{
+				d[(c.s >> i) & 3] = i;
+			}
+
+			for (var i = 0; i < 4; ++i)
+			{
+				for (var j = 0; j < 4; ++j)
+				{
+					if (i != j && d[i] < d[j])
+					{
+						var n = (c.s & ~(3 << d[i])) | (j << d[i]);
+
+						if (m[n] > c.m + 1)
+						{
+							m[n] = c.m + 1;
+							p.s = n;
+							p.m = m[n];
+							q.Add(p);
+						}
+					}
+				}
+			}
+		}
+
+		Console.WriteLine(m[e]);
+	}
+
+	struct P
+	{
+		public int s;
+		public int m;
+	}
+
+	class C : IComparer<P>
+	{
+		public int Compare(P x, P y)
+		{
+			var d = x.m - y.m;
+			return d != 0 ? d : x.s - y.s;
+		}
+	}
+
+	string D(int s, int l)
+	{
+		var d = new int[4];
+
+		d[0] = d[1] = d[2] = d[3] = 2 * l;
+
+		for (var i = 2 * l - 2; i >= 0; i -= 2)
+		{
+			d[(s >> i) & 3] = i;
+		}
+
+		return string.Format("{0} {1} {2} {3}", d[0], d[1], d[2], d[3]);
+	}
+}

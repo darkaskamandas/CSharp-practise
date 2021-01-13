@@ -1,0 +1,97 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace CutTree
+{
+    public class node
+    {
+        public long weight;
+        public long treeWeight;
+        public List<node> neighbors;
+
+        public node(long weight)
+        {
+            this.weight = weight;
+            this.treeWeight = 0;
+            this.neighbors = new List<node>();
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            long n = long.Parse(Console.ReadLine());
+            string[] split = Console.ReadLine().Split(' ');
+
+            // Read nodes
+            node[] nodes = new node[n + 1];
+            for (int i = 1; i <= n; i++)
+            {
+                nodes[i] = new node(long.Parse(split[i - 1]));
+            }
+
+            // Read edges
+            for (int i = 1; i < n; i++)
+            {
+                string[] edgeSplit = Console.ReadLine().Split(' ');
+                long parent = long.Parse(edgeSplit[0]);
+                long child = long.Parse(edgeSplit[1]);
+
+                nodes[parent].neighbors.Add(nodes[child]);
+                nodes[child].neighbors.Add(nodes[parent]);
+            }
+
+            // Compute tree wieght
+            ComputeTreeWeight(nodes[1], null);
+
+            // Compute diff
+            long diff = long.MaxValue;
+            FindDiff(nodes[1], nodes[1].treeWeight, ref diff, null);
+
+            Console.WriteLine(diff);
+
+        }
+
+        static public void ComputeTreeWeight(node root, node parent)
+        {
+            if (root == null)
+                return;
+
+            root.treeWeight = root.weight;
+            for (int i = 0; i < root.neighbors.Count; i++)
+            {
+                if (root.neighbors[i] != parent)
+                {
+                    ComputeTreeWeight(root.neighbors[i], root);
+                    root.treeWeight += root.neighbors[i].treeWeight;
+                }
+            }
+        }
+
+        static public void FindDiff(node root, long topTreeWeight, ref long diff, node parent)
+        {
+            if (root == null)
+                return;
+
+            for (int i = 0; i < root.neighbors.Count; i++)
+            {
+                if (root.neighbors[i] != parent)
+                {
+                    long wieight1 = topTreeWeight - root.neighbors[i].treeWeight;
+                    long wieight2 = root.neighbors[i].treeWeight;
+                    long newdiff = Math.Abs(wieight1 - wieight2);
+                    if (newdiff < diff)
+                    {
+                        diff = newdiff;
+                    }
+
+                    FindDiff(root.neighbors[i], topTreeWeight, ref diff, root);
+                }
+            }
+        }
+    }
+}
