@@ -1,0 +1,149 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.IO;
+
+namespace Solution
+{
+    class Tree : Dictionary<string, Tree>
+    {
+        public long K;
+        private List<string> keys = new List<string>();
+
+        public void Update(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+                return;
+
+            foreach (var subtree in this)
+            {
+                if (subtree.Key[0] == s[0])
+                {
+                    int k = 1;
+                    while ((k < subtree.Key.Length) && (k < s.Length) && (subtree.Key[k] == s[k]))
+                        ++k;
+
+                    if (k == subtree.Key.Length)
+                    {
+                        subtree.Value.Update(s.Substring(k));
+                        return;
+                    }
+
+                    string substr = subtree.Key.Substring(0, k);
+                    string us = s.Substring(k);
+                    string ut = subtree.Key.Substring(k);
+
+                    Tree t = new Tree()
+                    {
+                        {ut, subtree.Value},
+                    };
+
+                    if (!string.IsNullOrEmpty(us))
+                        t.Add(us, new Tree());
+
+                    this.Remove(subtree.Key);
+                    this.Add(substr, t);
+                    return;
+                }
+            }
+
+            this[s] = new Tree();
+        }
+
+        public void CalcK()
+        {
+            long sum = 0;
+            foreach (var subtree in this)
+            {
+                subtree.Value.CalcK();
+                sum += subtree.Value.K + subtree.Key.Length;
+                keys.Add(subtree.Key);
+            }
+            keys.Sort();
+            K = sum;
+        }
+
+        public string GetString(long K)
+        {
+            if (K == 0)
+            {
+                return "";
+            }
+
+            for (int i = 0; i < keys.Count; ++i)
+            {
+                if (K <= keys[i].Length)
+                {
+                    return keys[i].Substring(0, (int)K);
+                }
+                K -= keys[i].Length;
+
+                long T = this[keys[i]].K;
+                if (K <= T)
+                {
+                    return keys[i] + this[keys[i]].GetString(K);
+                }
+
+                K -= T;
+            }
+
+            return "";
+        }
+    }
+
+    class Solution
+    {
+
+
+        private void RunSingleTest(TextReader reader, TextWriter writer)
+        {
+            Tree tree = new Tree();
+            int N = Convert.ToInt32(reader.ReadLine());
+            for (int i = 0; i < N; ++i)
+            {
+                string s = reader.ReadLine();
+                for (int j = 0; j < s.Length; ++j)
+                {
+                    tree.Update(s.Substring(j));
+                }
+            }
+
+            tree.CalcK();
+
+            N = Convert.ToInt32(reader.ReadLine());
+            for (int i = 0; i < N; ++i)
+            {
+                long K = Convert.ToInt64(reader.ReadLine());
+
+                if (K > tree.K)
+                {
+                    writer.WriteLine("INVALID");
+                    continue;
+                }
+
+                writer.WriteLine(tree.GetString(K));
+            }
+        }
+
+        public void Run(TextReader reader, TextWriter writer)
+        {
+            int T = 1; // Convert.ToInt32(reader.ReadLine());
+
+            while (T-- > 0)
+            {
+                RunSingleTest(reader, writer);
+            }
+
+            reader.Close();
+            writer.Close();
+        }
+
+        static void Main(string[] args)
+        {
+            Solution solution = new Solution();
+            //solution.Run(new StreamReader(@"F:\Projects\Interviewstreet\input.txt"), new StreamWriter(@"F:\Projects\Interviewstreet\output.txt"));
+            solution.Run(Console.In, Console.Out);
+        }
+    }
+}

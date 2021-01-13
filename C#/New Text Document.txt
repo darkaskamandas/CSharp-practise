@@ -1,0 +1,36 @@
+A stream is an ordered sequence of bytes that can be used to read and write to some form of backing store - this could be a file. You can think of a stream as an abstraction over that backing store.
+
+By treating our input or output sources/targets as streams, we can implement a more generic approach to reading and writing data.
+
+
+
+using System;
+using System.Globalization;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Numerics;
+using System.Text.RegularExpressions;
+using System.IO;
+
+namespace 基督教
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var writer = new StreamWriter(
+            new FileStream(@".\StarWars.txt", FileMode.Create)))
+            {
+                writer.Write("Beep bop!");
+            }
+
+            using (var reader = new StreamReader(
+                new FileStream(@".\StarWars.txt", FileMode.Open)))
+            {
+                Console.WriteLine(reader.ReadToEnd());
+            }
+        }
+    }
+}

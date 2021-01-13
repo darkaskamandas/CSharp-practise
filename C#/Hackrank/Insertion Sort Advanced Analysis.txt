@@ -1,0 +1,75 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Solution
+{
+    class Solution
+    {
+        private static long _swapCount = 0;
+        private static IList<int> MergeSort(IList<int> list)
+        {
+            if (list.Count <= 1)
+            {
+                return list;
+            }
+
+            // partition the list into 2 parts and sort them
+            var middle = (int)(list.Count/2);
+            var l1 = MergeSort(list.Take(middle).ToList());
+            var l2 = MergeSort(list.Skip(middle).ToList());
+
+            return Merge(l1, l2);
+
+        }
+
+        private static IList<int> Merge(IList<int> l1, IList<int> l2)
+        {
+            var index1 = 0;
+            var index2 = 0;
+            var result = new List<int>();
+
+            while (index1 < l1.Count || index2 < l2.Count)
+            {
+                if (index1 < l1.Count  && index2 < l2.Count)
+                {
+                    if (l1[index1] <= l2[index2])
+                    {
+                        result.Add(l1[index1++]);
+                    }
+                    else
+                    {
+                        result.Add(l2[index2++]);
+                        _swapCount += l1.Count - index1;
+                    }
+                }
+                else if (index1 < l1.Count)
+                {
+                    result.Add(l1[index1++]);
+                }
+                else if (index2 < l2.Count)
+                {
+                    result.Add(l2[index2++]);
+                }
+            }
+
+            return result;
+        }
+
+
+        static void Main(string[] args)
+        {
+            var testCount = int.Parse(Console.ReadLine().Trim());
+
+            for (int t = 0; t < testCount; t++)
+            {
+                Console.ReadLine(); // ignore
+                var list = Console.ReadLine().Trim().Split(' ').Select(int.Parse).ToList();
+
+                _swapCount = 0;
+                MergeSort(list);
+                Console.WriteLine(_swapCount.ToString());
+            }
+        }
+    }
+}

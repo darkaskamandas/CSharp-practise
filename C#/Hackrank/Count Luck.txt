@@ -1,0 +1,74 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+    static void Main(String[] args) {
+        /* Enter your code here. Read input from STDIN. Print output to STDOUT. Your class should be named Solution */
+        int numOfTests = Int32.Parse(Console.ReadLine());
+        for(int k=0; k < numOfTests; k++){
+            int[] NM = Console.ReadLine().Split(new char[] { ' ' }).Select(x => Int32.Parse(x)).ToArray();
+            char[][] map = new char[NM[0]][];
+            int row = 0;
+            int col = 0;
+            for(int i=0; i < NM[0]; i++){
+                string rowLine = Console.ReadLine();
+                map[i] = new char[NM[1]];
+                for(int j=0; j < NM[1]; j++){
+                    map[i][j] = rowLine[j];
+                    if(rowLine[j] == 'M'){
+                        row = i;
+                        col = j;
+                    }
+                }
+            }
+            int choices = Int32.Parse(Console.ReadLine());
+            if(choices == GetSelections(map, row, col)) {
+                Console.WriteLine("Impressed");
+            }
+            else{
+                Console.WriteLine("Oops!");
+            }
+        }
+    }
+    
+    private static int GetSelections(char[][] map, int row, int col){
+        if(map[row][col] == '*'){
+            return 0;
+        }
+        int numOfPaths = 0;
+        int[] choices = new int[4];
+        for(int i=0; i < 4; i++){
+            choices[i] = int.MaxValue;
+        }
+        map[row][col] = 'X';
+        if(row > 0 && map[row-1][col] != 'X'){
+            //Investigate Up
+            numOfPaths++;
+            choices[0] = GetSelections(map, row - 1, col); 
+        }
+        if(col < map[row].Length - 1 && map[row][col + 1] != 'X'){
+            //Investigate Right
+            numOfPaths++;
+            choices[1] = GetSelections(map, row, col + 1);
+        }
+        if(row < map.Length - 1 && map[row + 1][col] != 'X'){
+            //Investigate Down
+            numOfPaths++;
+            choices[2] = GetSelections(map, row + 1, col);
+        }
+        if(col > 0 && map[row][col-1] != 'X'){
+            numOfPaths++;
+            choices[3] = GetSelections(map, row, col - 1);
+        }
+        map[row][col] = '.';
+        int min = int.MaxValue;
+        for(int i=0; i < 4; i++){
+            min = Math.Min(min, choices[i]);
+        }
+        if(min < int.MaxValue && numOfPaths > 1){
+            return min + 1;
+        }
+        return min;
+    }
+}
