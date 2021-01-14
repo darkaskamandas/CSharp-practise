@@ -1,0 +1,411 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+class Solution {
+    static void Main(String[] args)
+	{
+		int t = TestCases();
+		for (int i = 0; i < t; i++)
+		{
+			Solve();
+		}
+	}
+
+	private static void Solve()
+	{
+		string input = Console.ReadLine();
+		int k = int.Parse(Console.ReadLine());
+
+		int[] suffixArray = SuffixArray.Build(input, 'a', 'z');
+		int[] lcpArray = LcpArray.Build(input + '\u0000', suffixArray);
+		int length = input.Length;
+
+		int beforeConcat = 0;
+		for (int i = 0; i < length; i++)
+		{
+			int suffixLength = length - suffixArray[i];
+			for (int j = lcpArray[i]; j < suffixLength; j++)
+			{
+				int afterConcat = beforeConcat + j + 1;
+				if (afterConcat >= k)
+				{
+					int index = suffixArray[i] + k - beforeConcat - 1;
+					Console.WriteLine(input[index]);
+					return;
+				}
+
+				beforeConcat = afterConcat;
+			}
+		}
+
+		//Print(suffixArray);
+		//Print(LcpArray.Build(s + '\u0000', suffixArray));
+	}
+
+	static int TestCases()
+	{
+		return int.Parse(Console.ReadLine());
+	}
+
+	private class SuffixArray
+	{
+		const bool SType = true;
+		const bool LType = false;
+
+		private readonly int n;
+		private readonly int[] input;
+		private readonly bool[] stypes;
+		private readonly int alphabetSize;
+
+		private SuffixArray(string input, int firstAlphabetIndex, int lastAlphabetIndex)
+			: this(Reduce(input, firstAlphabetIndex),
+				   lastAlphabetIndex - firstAlphabetIndex + 1)
+		{
+		}
+
+		public SuffixArray(int[] input, int alphabetSize)
+		{
+			this.input = input;
+			this.n = this.input.Length + 1;
+			this.stypes = new bool[input.Length + 1];
+			this.alphabetSize = alphabetSize;
+		}
+
+		public static int[] Build(string input, char firstCharPossible, char lastPossibleChar)
+		{
+			if (string.IsNullOrWhiteSpace(input))
+			{
+				throw new ArgumentException("The input text should not be null or empty");
+			}
+			return new SuffixArray(input, firstCharPossible, lastPossibleChar).Build();
+		}
+
+		public static int[] Build(int[] input, int alphabetSize)
+		{
+			if (input == null || input.Length == 0)
+			{
+				throw new ArgumentException("The input text should not be null or empty");
+			}
+
+			return new SuffixArray(input, alphabetSize).Build();
+		}
+
+		private int[] Build()
+		{
+			var sa = new int[n];
+			BuildTypeMap();
+
+			int[] bucket = GetBucket();
+
+			InduceLmsChars(sa, bucket);
+
+			InduceSortL(sa, bucket);
+			InduceSortS(sa, bucket);
+
+			int[] lmsNames, lmsSuffixOffsets;
+			int lmsDistinctNames;
+
+			GetSummary(sa, out lmsNames, out lmsSuffixOffsets, out lmsDistinctNames);
+
+			int[] lmsSuffixArray = GetLmsSuffixArray(lmsNames, lmsDistinctNames);
+
+			int[] result = FinalLmsSort(lmsSuffixArray, lmsSuffixOffsets, bucket);
+
+			InduceSortL(result, bucket);
+			InduceSortS(result, bucket);
+
+			return result;
+		}
+
+		private int[] FinalLmsSort(int[] lmsSuffixArray, int[] lmsSuffixOffsets, int[] bucket)
+		{
+			var suffixOffsets = new int[this.n];
+
+			int[] tails = GetBucketTails(bucket);
+			for (int i = lmsSuffixArray.Length - 1; i > 1; i--)
+			{
+				int startingIndex = lmsSuffixOffsets[lmsSuffixArray[i]];
+				int bIndex = this.input[startingIndex];
+
+				int tail = tails[bIndex]--;
+				suffixOffsets[tail] = startingIndex;
+			}
+
+			suffixOffsets[0] = this.input.Length;
+
+			return suffixOffsets;
+		}
+
+		private int[] GetLmsSuffixArray(int[] lmsNames, int lmsDistinctNames)
+		{
+			var lmsSuffixArray = new int[lmsNames.Length + 1];
+			if (lmsDistinctNames == lmsNames.Length)
+			{
+				lmsSuffixArray[0] = lmsNames.Length;
+				for (int i = 0; i < lmsNames.Length; i++)
+				{
+					lmsSuffixArray[lmsNames[i] + 1] = i;
+				}
+			}
+			else
+			{
+				lmsSuffixArray = new SuffixArray(lmsNames, lmsDistinctNames).Build();
+			}
+
+			return lmsSuffixArray;
+		}
+
+		private void InduceLmsChars(int[] suffixArray, int[] bucket)
+		{
+			int[] tails = GetBucketTails(bucket);
+
+			for (int i = 0; i < this.input.Length; i++)
+			{
+				if (IsLmsChar(i))
+				{
+					int bIndex = this.input[i];
+					suffixArray[tails[bIndex]--] = i;
+				}
+			}
+
+			suffixArray[0] = this.input.Length;
+		}
+
+		private void GetSummary(int[] suffixArray, out int[] lmsNames, out int[] lmsSuffixStartingIndexes, out int lmsDistinctCharsUsed)
+		{
+			lmsNames = new int[n];
+			int currentName = 0;
+
+			lmsNames[suffixArray[0]] = currentName;
+			int lastLmsSuffixStartingIndex = suffixArray[0];
+
+			for (int i = 1; i < suffixArray.Length; i++)
+			{
+				int currentSuffixStartingIndex = suffixArray[i];
+				if (!IsLmsChar(currentSuffixStartingIndex))
+				{
+					continue;
+				}
+
+				if (!AreLmsSubstringEqual(currentSuffixStartingIndex, lastLmsSuffixStartingIndex))
+				{
+					currentName++;
+				}
+
+				lastLmsSuffixStartingIndex = currentSuffixStartingIndex;
+				lmsNames[currentSuffixStartingIndex] = currentName;
+			}
+
+			var summarySuffixOffsets = new List<int>();
+			var summaryStrings = new List<int>();
+
+			for (int i = 0; i < lmsNames.Length; i++)
+			{
+				if (i != suffixArray[0] && lmsNames[i] == 0)
+				{
+					continue;
+				}
+
+				summarySuffixOffsets.Add(i);
+				summaryStrings.Add(lmsNames[i]);
+			}
+
+			lmsNames = summaryStrings.ToArray();
+			lmsSuffixStartingIndexes = summarySuffixOffsets.ToArray();
+			lmsDistinctCharsUsed = currentName + 1;
+		}
+
+		private void BuildTypeMap()
+		{
+			this.stypes[n - 1] = SType;
+			this.stypes[n - 2] = LType;
+			for (int i = n - 3; i >= 0; i--)
+			{
+				int compare = this.input[i] - this.input[i + 1];
+				if (compare < 0)
+				{
+					this.stypes[i] = SType;
+				}
+				else if (compare == 0)
+				{
+					this.stypes[i] = this.stypes[i + 1];
+				}
+				// if (compare < 0) => assign LType ('false')
+				// but 'false' is the default boolean value
+				// => no need to execute this step
+			}
+		}
+
+		private int[] GetBucket()
+		{
+			var bucket = new int[alphabetSize];
+			for (int i = 0; i < this.input.Length; i++)
+			{
+				bucket[this.input[i]]++;
+			}
+
+			return bucket;
+		}
+
+		private int[] GetBucketHeads(int[] bucket)
+		{
+			var heads = new int[alphabetSize];
+			// the empty suffix is always the lowest
+			// and takes the first place
+			int offset = 1;
+
+			for (int i = 0; i < alphabetSize; i++)
+			{
+				// the index of the heads is
+				// the 'lexicographical priority' of a letter contained in the input
+				// compared to the other letter persisted in the input
+				heads[i] = offset;
+
+				// the minimal index of a suffix starting with the alphabet index 'i'
+				// in the suffix array
+				offset += bucket[i];
+			}
+
+			return heads;
+		}
+
+		private int[] GetBucketTails(int[] bucket)
+		{
+			var tails = new int[alphabetSize];
+			// the empty suffix is always the lowest
+			// and takes the first place
+			int offset = 1;
+
+			for (int i = 0; i < alphabetSize; i++)
+			{
+				// the maximal index of a suffix starting with the alphabet index 'i'
+				// in the suffix array
+				offset += bucket[i];
+				// the index of the tails is
+				// the 'lexicographical priority' of a letter contained in the input
+				// compared to the other letter persisted in the input
+				tails[i] = offset - 1;
+			}
+
+			return tails;
+		}
+
+		private void InduceSortL(int[] suffixArray, int[] bucket)
+		{
+			int[] heads = GetBucketHeads(bucket);
+
+			for (int i = 0; i < suffixArray.Length; i++)
+			{
+				int leftSuffixIndex = suffixArray[i] - 1;
+				if (leftSuffixIndex < 0
+					|| stypes[leftSuffixIndex])
+				{
+					continue;
+				}
+
+				int bIndex = this.input[leftSuffixIndex];
+				int head = heads[bIndex]++;
+				suffixArray[head] = leftSuffixIndex;
+			}
+		}
+
+		private void InduceSortS(int[] suffixArray, int[] bucket)
+		{
+			int[] tails = GetBucketTails(bucket);
+
+			for (int i = suffixArray.Length - 1; i > 0; i--)
+			{
+				int leftSuffixIndex = suffixArray[i] - 1;
+				if (leftSuffixIndex < 0
+					|| !stypes[leftSuffixIndex])
+				{
+					continue;
+				}
+
+				int bIndex = this.input[leftSuffixIndex];
+				int tail = tails[bIndex]--;
+				suffixArray[tail] = leftSuffixIndex;
+			}
+		}
+
+		private bool IsLmsChar(int pos)
+		{
+			if (pos == 0)
+			{
+				return false;
+			}
+
+			return this.stypes[pos] && !this.stypes[pos - 1];
+		}
+
+		private bool AreLmsSubstringEqual(int posA, int posB)
+		{
+			if (posA == this.input.Length
+				|| posB == this.input.Length)
+			{
+				return false;
+			}
+
+			bool equalCharsFound = false;
+			while (true)
+			{
+				bool aIsLms = IsLmsChar(posA);
+				bool bIsLms = IsLmsChar(posB);
+
+				if (equalCharsFound && (aIsLms && bIsLms))
+				{
+					// found the beginning of the new LMS
+					return true;
+				}
+
+				if (!AreCharsEqual(aIsLms, bIsLms, posA++, posB++))
+				{
+					return false;
+				}
+
+				equalCharsFound = true;
+			}
+		}
+
+		private bool AreCharsEqual(bool aIsLms, bool bIsLms, int posA, int posB)
+		{
+			return aIsLms == bIsLms
+				   && this.input[posA] == this.input[posB];
+		}
+
+		private static int[] Reduce(string input, int firstAlphabetIndex)
+		{
+			var reducedInput = new int[input.Length];
+			for (int i = 0; i < input.Length; i++)
+			{
+				reducedInput[i] = input[i] - firstAlphabetIndex;
+			}
+
+			return reducedInput;
+		}
+	}
+
+	private class LcpArray
+	{
+		public static int[] Build(string input, int[] suffixArray)
+		{
+			int n = input.Length;
+			int k = 0;
+			var lcp = new int[n];
+			var rank = new int[n];
+
+			for (int i = 0; i < n; i++) rank[suffixArray[i]] = i;
+
+			for (int i = 1; i < n; i++, k = k!=0 ? k-1 : 0)
+			{
+				if (rank[i] == 0) { k = 0; continue; }
+				int j = suffixArray[rank[i] - 1];
+				while (i + k < n 
+					&& j + k < n 
+					&& input[i + k] == input[j + k]) k++;
+				lcp[rank[i]] = k;
+			}
+			return lcp;
+		}
+	}
+}

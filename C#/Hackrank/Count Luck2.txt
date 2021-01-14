@@ -1,0 +1,118 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+    //public static void Main(string[] args)
+        public static void Main(string[] args)
+            {
+        int T = int.Parse(Console.ReadLine());
+
+
+            for (int i = 0; i < T; i++)
+            {
+                int[] NM =
+                    Console.ReadLine()
+                        .Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(n => int.Parse(n))
+                        .ToArray();
+
+                int N = NM[0];
+                int M = NM[1];
+
+                // read graph
+                string[] graph = new string[N];
+                int mx = 0, my = 0, ex = 0, ey = 0;
+                for (int n = 0; n < N; n++)
+                {
+                    graph[n] = Console.ReadLine();
+                    if (graph[n].IndexOf('M') != -1)
+                    {
+                        mx = graph[n].IndexOf('M');
+                        my = n;
+                    }
+
+                    if (graph[n].IndexOf('*') != -1)
+                    {
+                        ex = graph[n].IndexOf('*');
+                        ey = n;
+                    }
+                }
+
+                int K = int.Parse(Console.ReadLine());
+                int k = 0;
+
+                bool[,] visited = new bool[N, M];
+
+                // now do graph traversal.
+                k = DFS(graph, my, mx, visited, ey, ex, 0);
+                Console.WriteLine(k == K ? "Impressed" : "Oops!");
+            }
+
+        }
+
+        private static int DFS(
+            string[] graph, 
+            int y, 
+            int x, 
+            bool[,] visited,
+            int ey, int ex,
+            int k)
+        {
+            visited[y, x] = true;
+            if (y == ey && x == ex)
+            {
+                return k;
+            }
+
+            int res = -1;
+
+            var nextSteps = NextSteps(graph, y, x, visited);
+            if (nextSteps.Count == 0)
+            {
+                return -1;
+            }
+
+            if (nextSteps.Count > 1)
+            {
+                k++;
+            }
+
+            foreach (Tuple<int, int> nextStep in nextSteps)
+            {
+                res = Math.Max(DFS(graph, nextStep.Item1, nextStep.Item2, visited, ey, ex, k), res);
+            }
+
+            return res;
+        }
+
+        static List<Tuple<int, int>> NextSteps(string[] graph, int y, int x, bool[,] visited)
+        {
+            List<Tuple<int, int>> result = new List<Tuple<int, int>>(4);
+            // check left
+            if (x > 0 && !(visited[y,x-1]) && graph[y][x-1] != 'X')
+            {
+                result.Add(Tuple.Create(y, x-1));
+            }
+
+            // check right
+            if ((x < graph[0].Length - 1) && !(visited[y, x + 1]) && graph[y][x + 1] != 'X')
+            {
+                result.Add(Tuple.Create(y, x + 1));
+            }
+
+            // check up
+            if (y > 0 && !(visited[y - 1, x]) && graph[y - 1][x] != 'X')
+            {
+                result.Add(Tuple.Create(y - 1, x));
+            }
+
+            // check right
+            if ((y < graph.Length - 1) && !(visited[y + 1, x]) && graph[y + 1][x] != 'X')
+            {
+                result.Add(Tuple.Create(y + 1, x));
+            }
+
+            return result;
+        }
+}

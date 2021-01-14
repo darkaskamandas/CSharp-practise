@@ -1,0 +1,100 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Diagnostics;
+
+public class Solution
+{
+    static void Main(string[] args)
+    {
+        long T = ReadNextLong();
+        for (long t = 0; t < T; t++)
+        {
+            long N = ReadNextLong();
+            long M = ReadNextLong();
+            Console.WriteLine(Go(N, M));
+        }
+    }
+
+    private static long Go(long N, long M)
+    {
+        if (M == 0) return 1;
+        if (M == 1) return 2;
+
+        if (M >= (N * (N - 1) / 2)) return N;
+
+        long start = 2;
+        if (TRR(N, M, start) == 0)
+        {
+            return start;
+        }
+
+        long end = N - 1;
+        if (TRR(N, M, end) == 0)
+        {
+            return end;
+        }
+
+        while (true)
+        {
+            Debug.Assert(start != end);
+            if ((start + 1) == end)
+                return end;
+
+            long mid = (start + end) / 2;
+            int cmp = TRR(N, M, mid);
+
+            switch (cmp)
+            {
+                case 0:
+                    return mid;
+
+                case 1:
+                    end = mid;
+                    break;
+
+                default:
+                    start = mid;
+                    break;
+            }
+        }
+    }
+
+    private static int TRR(long N, long M, long clique)
+    {
+        var max = TR(N, clique);
+        if (M > max) return -1;
+        var min = TR(N, clique - 1);
+        if (M > min) return 0;
+        return 1;
+    }
+
+    private static long TR(long N, long R)
+    {
+        long NmodR = N % R;
+        long NdivR = N / R;
+
+        return NmodR == 0
+            ? ((N * N - R * NdivR * NdivR) / 2)
+            : ((N * N - NmodR * (NdivR + 1) * (NdivR + 1) - (R - NmodR) * NdivR * NdivR) / 2);
+    }
+
+    private static long ReadNextLong()
+    {
+        char c = (char)Console.Read();
+        while (!char.IsDigit(c))
+        {
+            c = (char)Console.Read();
+        }
+
+        long value = 0;
+        do
+        {
+            value *= 10;
+            value += c - '0';
+        }
+        while (char.IsDigit(c = (char)Console.Read()));
+
+        return value;
+    }
+}

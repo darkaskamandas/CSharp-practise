@@ -1,0 +1,259 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Submission05._042_Algo_Graph_MinimumPenaltyPath
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            SubmissionRun();
+        }
+
+        static void SubmissionRun()
+        {
+            HereComesTheAlgorithm(new ConsoleReaderHelper(), Console.Out);
+        }
+
+        private static void HereComesTheAlgorithm(TextReaderHelper textReaderHelper_in, TextWriter textWriter_in)
+        {
+            int[] aHeader = textReaderHelper_in.GetValueArraySpaceSeparated<int>();
+            int aNumberOfNodes = aHeader[0];
+            int aNumberOfEdges = aHeader[1];
+
+            SpecialGraphLR aGraph = new SpecialGraphLR(aNumberOfNodes);
+            for (int i = 0; i < aNumberOfEdges; ++i)
+            {
+                int[] anEdgeDescription = textReaderHelper_in.GetValueArraySpaceSeparated<int>();
+                aGraph.AddEdge(anEdgeDescription[0], anEdgeDescription[1], anEdgeDescription[2]);
+                aGraph.AddEdge(anEdgeDescription[1], anEdgeDescription[0], anEdgeDescription[2]);
+            }
+
+            int[] aStartAndEndNodeHeader = textReaderHelper_in.GetValueArraySpaceSeparated<int>();
+
+            for(int i = 1; i <= 1024; ++i)
+            {
+                if (aGraph.SpecialBFS(aStartAndEndNodeHeader[0], aStartAndEndNodeHeader[1], i))
+                {
+                    textWriter_in.WriteLine(i);
+                    return;
+                }
+            }
+            textWriter_in.WriteLine(-1);
+        }
+
+        public class SpecialGraphLR
+        {
+            protected struct EdgeTo<TT, CC> : IEquatable<EdgeTo<TT, CC>>
+            {
+                public EdgeTo(TT node_in, CC cost_in)
+                    : this()
+                {
+                    Node = node_in;
+                    Cost = cost_in;
+                }
+
+                public TT Node { get; private set; }
+                public CC Cost { get; private set; }
+
+                public override int GetHashCode()
+                {
+                    return Node.GetHashCode() ^ Cost.GetHashCode();
+                }
+
+                public override bool Equals(object object_in)
+                {
+                    if (object_in is EdgeTo<TT, CC>)
+                    {
+                        EdgeTo<TT, CC> anOtherEdgeTo = (EdgeTo<TT, CC>)object_in;
+                        return Node.Equals(anOtherEdgeTo.Node) && Cost.Equals(anOtherEdgeTo.Cost);
+                    }
+                    return false;
+                }
+                public bool Equals(EdgeTo<TT, CC> other_in)
+                {
+                    return Node.Equals(other_in.Node) && Cost.Equals(other_in.Cost);
+                }
+                public static bool operator ==(EdgeTo<TT, CC> a_in, EdgeTo<TT, CC> b_in)
+                {
+                    return a_in.Equals(b_in);
+                }
+                public static bool operator !=(EdgeTo<TT, CC> a_in, EdgeTo<TT, CC> b_in)
+                {
+                    return !(a_in == b_in);
+                }
+            }
+
+            public SpecialGraphLR(int nodeCount_in)
+            {
+                NodeCount = nodeCount_in;
+                myEdgeCollection_ = new Dictionary<int, List<EdgeTo<int, int>>>(NodeCount);
+            }
+
+            public int NodeCount { get; protected set; }
+
+            protected Dictionary<int, List<EdgeTo<int, int>>> myEdgeCollection_;
+
+            public void AddEdge(int fromNode_in, int toNode_in, int cost_in)
+            {
+                if (!myEdgeCollection_.ContainsKey(fromNode_in)) myEdgeCollection_.Add(fromNode_in, new List<EdgeTo<int, int>>());
+                myEdgeCollection_[fromNode_in].Add(new EdgeTo<int, int>(toNode_in, cost_in));
+            }
+
+            public bool SpecialBFS(int startNode_in, int endNode_in, int minimumPenalty_in)
+            {
+                bool aResult = false;
+                HashSet<int> aVisitedNodes = new HashSet<int>();                
+
+                GraphSearch.BFS_Action(startNode_in,
+                x => aVisitedNodes.Add(x),
+                x =>
+                {
+                    if(x == endNode_in)
+                    {
+                        aResult = true;
+                    }
+                    else if (myEdgeCollection_.ContainsKey(x))
+                    {
+                        List<int> aChildNodes = myEdgeCollection_[x].Where(y => !aVisitedNodes.Contains(y.Node) && ((y.Cost | minimumPenalty_in) == minimumPenalty_in)).Select(z => z.Node).ToList();                        
+                        return aChildNodes;
+                    }
+                    return Enumerable.Empty<int>();
+                },
+                (x, y) => { });
+
+                return aResult;
+            }
+
+            public int OtherSpecial(int nodeCount_in, int startNode_in, int endNode_in, int infiniteValue_in)
+            {
+                throw new Exception("NJI");
+                // Need to work it out based on this:
+                // http://stackoverflow.com/questions/35732479/minimum-penalty-path-in-weighted-graph
+            }
+        }
+    }
+}
+
+namespace Submission05._042_Algo_Graph_MinimumPenaltyPath
+{
+
+    public class FileReaderHelper : TextReaderHelper
+    {
+        public FileReaderHelper(string fileName_in)
+            : base(new StreamReader(fileName_in), true)
+        {
+        }
+    }
+
+    public class ConsoleReaderHelper : TextReaderHelper
+    {
+        public ConsoleReaderHelper()
+            : base(Console.In, false)
+        {
+        }
+    }
+
+    public class TextReaderHelper : IDisposable
+    {
+        private TextReader myTextReader_;
+        private readonly bool myDisposeNeededFlag_;
+
+        public TextReaderHelper(TextReader textReader_in, bool disposeNeededFlag_in)
+        {
+            myTextReader_ = textReader_in;
+            myDisposeNeededFlag_ = disposeNeededFlag_in;
+        }
+
+        public string GetString()
+        {
+            return myTextReader_.ReadLine();
+        }
+
+        #region Basic Helper Functions ---------------------------------------------------
+        public T GetValue<T>()
+        {
+            string aLine = myTextReader_.ReadLine();
+            return (T)Convert.ChangeType(aLine, typeof(T));
+        }
+
+        public T[] GetValueArraySpaceSeparated<T>()
+        {
+            return GetValueArray<T>(' ');
+        }
+
+        public T[] GetValueArray<T>(params char[] separator_in)
+        {
+            string aLine = myTextReader_.ReadLine();
+            string[] anItemStringArray = aLine.Split(separator_in);
+            return anItemStringArray.Select(x => (T)Convert.ChangeType(x, typeof(T))).ToArray();
+        }
+
+        public T[] GetValueArraySpaceSeparated<T>(int itemCount_in)
+        {
+            return GetValueArray<T>(itemCount_in, ' ');
+        }
+
+        public T[] GetValueArray<T>(int itemCount_in, params char[] separator_in)
+        {
+            string aLine = myTextReader_.ReadLine();
+            string[] anItemStringArray = aLine.Split(separator_in);
+            return anItemStringArray.Take(itemCount_in).Select(x => (T)Convert.ChangeType(x, typeof(T))).ToArray();
+        }
+        #endregion Basic Helper Functions ------------------------------------------------
+
+        #region Dispose Section ---------------------------------------------------------------------
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing_in)
+        {
+            if (disposing_in)
+            {
+                // free managed resources
+                if (myDisposeNeededFlag_)
+                {
+                    if (myTextReader_ != null)
+                    {
+                        myTextReader_.Close();
+                        myTextReader_.Dispose();
+                        myTextReader_ = null;
+                    }
+                }
+            }
+        }
+
+        ~TextReaderHelper()
+        {
+            // Debug.WriteLine("~TextReaderHelper! Not proper use! Finalizer called from Garbage Collection thread!");
+        }
+        #endregion Dispose Section ---------------------------------------------------------------------
+    }
+
+    public static class GraphSearch
+    {
+        public static void BFS_Action<T>(T root_in, Action<T> markAction_in, Func<T, IEnumerable<T>> edgeExpansionQueryFunc_in, Action<T, T> foreachAction_in)
+        {
+            Queue<T> aQueue = new Queue<T>();
+            aQueue.Enqueue(root_in);
+            markAction_in(root_in);
+            while (aQueue.Count > 0)
+            {
+                T aCurrentNode = aQueue.Dequeue();
+                foreach (T aNextEdge in edgeExpansionQueryFunc_in(aCurrentNode))
+                {
+                    aQueue.Enqueue(aNextEdge);
+                    markAction_in(aNextEdge);
+                    foreachAction_in(aCurrentNode, aNextEdge);
+                }
+            }
+        }
+    }
+}
