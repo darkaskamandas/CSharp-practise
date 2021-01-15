@@ -1,0 +1,390 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+
+public class DisjointSet
+{
+    private class SetItem
+    {
+        public int Parent { get; set; }
+        public int Rank { get; set; }
+        public int Count { get; set; }
+    }
+
+    private List<SetItem> _items;
+
+    public int Count
+    {
+        get { return _items.Count; }
+    }
+
+    public DisjointSet(int size)
+    {
+        _items = new List<SetItem>(size);
+        for (int i = 0; i < size; i++)
+        {
+            _items.Add(new SetItem
+            {
+                Parent = i,
+                Rank = 0,
+                Count = 1
+            });
+        }
+    }
+
+    public int FindRoot(int itemIndex)
+    {
+        // If itemIndex is its own parent 
+        if (_items[itemIndex].Parent == itemIndex)
+        {
+            // Then return item 
+            return itemIndex;
+        }
+
+        // recursively set its parents to the root parent
+        int root = FindRoot(_items[itemIndex].Parent);
+        _items[itemIndex].Parent = root;
+
+        return root;
+    }
+
+    public int GetSetSize(int itemIndex)
+    {
+        return _items[FindRoot(itemIndex)].Count;
+    }
+
+    public void Union(int item1Index, int item2Index)
+    {
+        // Find the root parent nodes for item1 and item2
+        var item1Root = FindRoot(item1Index);
+        var item2Root = FindRoot(item2Index);
+
+        // If they already share the same root then simply return as they are already in the same set
+        if (item1Root == item2Root)
+            return;
+
+        // Get rank of each item
+        var item1Rank = _items[item1Index].Rank;
+        var item2Rank = _items[item2Index].Rank;
+
+        // Add the set with the smaller rank to root to the set with the larger rank
+        if (item1Rank < item2Rank)
+        {
+            _items[item1Root].Parent = item2Root;
+            _items[item2Root].Count += _items[item1Root].Count;
+        }
+        else if (item1Rank > item2Rank)
+        {
+            _items[item2Root].Parent = item1Root;
+            _items[item1Root].Count += _items[item2Root].Count;
+        }
+        // If their ranks are the same then anchor item1's set to item2's set and increase item2's set rank
+        else
+        {
+            _items[item2Root].Parent = item1Root;
+            _items[item1Root].Count += _items[item2Root].Count;
+            _items[item2Root].Rank++;
+        }
+
+    }
+}
+public enum HeapType
+{
+    MinHeap,
+    MaxHeap
+}
+public class BinaryHeap<T>
+{
+    private class ItemWithPriority<K>
+    {
+        public K Item { get; private set; }
+        public long Priority { get; set; }
+        public int Index { get; set; }
+        public ItemWithPriority(K item, long priority, int index)
+        {
+            Item = item;
+            Priority = priority;
+            Index = index;
+        }
+        public override string ToString()
+        {
+            return string.Format("Item={0}, Priority={1}, Index={2}", Item, Priority, Index);
+        }
+    }
+    private IComparer<T> _comparer;
+    private IList<ItemWithPriority<T>> _items;   
+    private Dictionary<T, ItemWithPriority<T>> _itemToMetadataMap = new Dictionary<T, ItemWithPriority<T>>();
+
+    public HeapType Type { get; private set; }
+    public int Count
+    {
+        get { return _items.Count; }
+    }
+
+    public BinaryHeap(HeapType heapType) : this(heapType, Comparer<T>.Default) { }
+    public BinaryHeap(HeapType heapType, int capacity) : this(heapType, Comparer<T>.Default, capacity) { }
+    public BinaryHeap(HeapType heapType, IComparer<T> comparer, int capacity = 0)
+    {
+        Type = heapType;
+        _comparer = comparer;
+        if (capacity > 0)
+        {
+            _items = new List<ItemWithPriority<T>>(capacity);
+        }
+        else
+        {
+            _items = new List<ItemWithPriority<T>>();
+        }
+    }
+
+    public void Add(T item, long priority)
+    {
+        ItemWithPriority<T> itemWithMetadata = new ItemWithPriority<T>(item, priority, _items.Count);
+        _items.Add(itemWithMetadata);
+        _itemToMetadataMap[item] = itemWithMetadata;
+        BubbleUp(_items.Count - 1);
+    }
+
+    public void IncreasePriority(T item, long priority)
+    {
+        var itemWithMetadata = _itemToMetadataMap[item];
+        if (itemWithMetadata.Priority < priority)
+        {
+            throw new ArgumentException("IncreasePriority must be called with a priority value that less than the original priority", "priority");
+        }
+        if (itemWithMetadata.Priority == priority)
+        {
+            return;
+        }
+
+        itemWithMetadata.Priority = priority;
+        BubbleUp(itemWithMetadata.Index);
+    }
+
+    private void BubbleUp(int itemIndex)
+    {
+        var item = _items[itemIndex];
+        while (itemIndex > 0)
+        {
+            int parentIndex = (itemIndex - 1) / 2;
+            var parent = _items[parentIndex];
+            int result = item.Priority.CompareTo(parent.Priority);
+            if(result == 0)
+            {
+                result = _comparer.Compare(_items[itemIndex].Item, _items[parentIndex].Item);
+            }
+            if ((Type == HeapType.MinHeap && result < 0) ||
+                (Type == HeapType.MaxHeap && result > 0))
+            {
+                Swap(itemIndex, parentIndex);
+                itemIndex = parentIndex;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    public Tuple<T, long> Remove()
+    {
+        var top = _items[0];
+        _itemToMetadataMap.Remove(top.Item);
+
+        if(_items.Count > 1)
+        {
+            _items[0] = _items[_items.Count - 1];
+            _items[0].Index = 0;
+            _items.RemoveAt(_items.Count - 1);
+            BubbleDown();
+        }
+        else
+        {
+            _items.RemoveAt(_items.Count - 1);
+        }
+
+        return new Tuple<T, long>(top.Item, top.Priority);
+    }
+
+    public bool Contains(T item)
+    {
+        return _itemToMetadataMap.ContainsKey(item);
+    }
+
+    private void BubbleDown()
+    {
+        int itemIndex = 0;
+
+        while (itemIndex < _items.Count)
+        {
+            int leftIndex = itemIndex * 2 + 1;
+            int rightIndex = leftIndex + 1;
+            int childIndex = leftIndex;
+            int result;
+
+            // Compate left and right children
+            //
+            if (rightIndex < _items.Count)
+            {
+                result = _items[leftIndex].Priority.CompareTo(_items[rightIndex].Priority);
+                if(result == 0)
+                {
+                    result = _comparer.Compare(_items[leftIndex].Item, _items[rightIndex].Item);
+                }
+                if ((Type == HeapType.MinHeap && result > 0) ||
+                    (Type == HeapType.MaxHeap && result < 0))
+                {
+                    childIndex = rightIndex;
+                }
+                else
+                {
+                    childIndex = leftIndex;
+                }
+            }
+
+            // Compare item with child and swap if needed else break;
+            //
+            if (childIndex < _items.Count)
+            {
+                result = _items[itemIndex].Priority.CompareTo(_items[childIndex].Priority);
+                if (result == 0)
+                {
+                    _comparer.Compare(_items[itemIndex].Item, _items[childIndex].Item);
+                }
+                if ((Type == HeapType.MinHeap && result > 0) ||
+                    (Type == HeapType.MaxHeap && result < 0))
+                {
+                    Swap(itemIndex, childIndex);
+                    itemIndex = childIndex;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    public T Peek()
+    {
+        return _items[0].Item;
+    }
+
+    public long GetPriority(T item)
+    {
+        return _itemToMetadataMap[item].Priority;
+    }
+
+    private void Swap(int i, int j)
+    {
+        var tmp = _items[i];
+        _items[i] = _items[j];
+        _items[i].Index = i;
+        _items[j] = tmp;
+        _items[j].Index = j;
+    }
+}
+
+class Graph
+{
+    public int VertexCount { get; private set; }
+    public int EdgeCount { get; private set; }
+
+    private Dictionary<int, Dictionary<int, long>> _graph;
+
+    public Graph(int vertexCount, int edgeCount)
+    {
+        _graph = new Dictionary<int, Dictionary<int, long>>(vertexCount);
+        this.VertexCount = vertexCount;
+        this.EdgeCount = edgeCount;
+    }
+
+    public void AddEdge(int source, int target, long weight)
+    {
+        if(!_graph.ContainsKey(source))
+        {
+            _graph[source] = new Dictionary<int, long>();
+            _graph[source][target] = weight;
+        }
+        else
+        {
+            if(!_graph[source].ContainsKey(target))
+            {
+                _graph[source][target] = weight;
+            }
+            else
+            {
+                _graph[source][target] = Math.Min(_graph[source][target], weight);
+            }
+        }
+    }
+
+    public long GetMinSpanTreeWeightSum(int source)
+    {
+        DisjointSet set = new DisjointSet(this.VertexCount + 1);
+
+        BinaryHeap<Tuple<int, int>> edgesHeap = new BinaryHeap<Tuple<int, int>>(HeapType.MinHeap, this.VertexCount);
+        bool[,] isInQueue = new bool[this.VertexCount + 1, this.VertexCount + 1];
+        foreach(var vertexV in _graph.Keys)
+        {
+            foreach(var vertexU in _graph[vertexV].Keys)
+            {
+                if(!isInQueue[vertexV, vertexU])
+                {
+                    edgesHeap.Add(new Tuple<int, int>(vertexV, vertexU), _graph[vertexV][vertexU]);
+                    isInQueue[vertexV, vertexU] = isInQueue[vertexU, vertexV] = true;                    
+                }
+            }
+        }
+
+        List<Tuple<int, int, long>> mst = new List<Tuple<int, int, long>>();
+        long weightSum = 0;
+        while (edgesHeap.Count > 0)
+        {
+            var edge = edgesHeap.Remove();
+            var vertexV = edge.Item1.Item1;
+            var vertexU = edge.Item1.Item2;
+            var weight = edge.Item2;
+            if(set.FindRoot(vertexV) != set.FindRoot(vertexU))
+            {
+                set.Union(vertexV, vertexU);
+                mst.Add(new Tuple<int, int, long>(vertexV, vertexU, weight));
+                weightSum += weight;
+            }
+        }
+
+        return weightSum;
+    }
+}
+class Solution
+{
+
+    static void Main(String[] args)
+    {
+        string[] inputSplit = Console.ReadLine().Split();
+        int N = int.Parse(inputSplit[0]);
+        int M = int.Parse(inputSplit[1]);
+        Graph graph = new Graph(N, M);
+        for(int m = 0; m < M; m++)
+        {
+            inputSplit = Console.ReadLine().Split();
+            int n1 = int.Parse(inputSplit[0]);
+            int n2 = int.Parse(inputSplit[1]);
+            int r = int.Parse(inputSplit[2]);
+            graph.AddEdge(n1, n2, r);
+            graph.AddEdge(n2, n1, r);
+        }
+        int S = int.Parse(Console.ReadLine());
+
+        Console.WriteLine(graph.GetMinSpanTreeWeightSum(S));
+#if DEBUG
+        Console.ReadKey();
+#endif
+    }
+}

@@ -1,0 +1,137 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+
+class Solution
+{
+	static StreamReader reader;
+	static StreamWriter writer;
+
+	static void Main(String[] args)
+	{
+		using (reader = new StreamReader(Console.OpenStandardInput()))
+		//using (reader = File.OpenText(@"e:\work\input.txt"))
+		using (writer = new StreamWriter(Console.OpenStandardOutput()))
+		{
+			Solve();
+		}
+	}
+
+	private static void SolveEachCase()
+	{
+		int cases = int.Parse(reader.ReadLine());
+		for (int i = 0; i < cases; i++)
+		{
+			Solve();
+		}
+	}
+
+	private static void Solve()
+	{
+		int[] nodesAndEdges = GetLineNumbers();
+		int nodes = nodesAndEdges[0],
+			edges = nodesAndEdges[1];
+
+		List<KeyValuePair<int, int>>[] graph = BuildGraph(nodes, edges);
+		CalcMinCost(graph);
+	}
+
+	private static void PrintDistances(int[] distances, int start)
+	{
+		bool written = false;
+		var output = new StringBuilder();
+		for (int i = 0; i < distances.Length; i++)
+		{
+			if (i == start)
+			{
+				continue;
+			}
+
+			if (written)
+			{
+				output.Append(" ");
+			}
+
+			written = true;
+			output.Append(distances[i]);
+		}
+		writer.WriteLine(output.ToString());
+	}
+
+	private static void CalcMinCost(List<KeyValuePair<int, int>>[] graph)
+	{
+		int length = graph.Length;
+		var costs = new int[length];
+		for (int i = 0; i < costs.Length; i++)
+		{
+			costs[i] = -1;
+		}
+
+		WriteCosts(graph, costs);
+
+		int minCost = costs[length - 1];
+		writer.WriteLine(minCost == -1? "NO PATH EXISTS" : minCost.ToString());
+	}
+
+	private static void WriteCosts(List<KeyValuePair<int, int>>[] graph, int[] costs)
+	{
+		int n = graph.Length;
+		var nextStop = new Queue<int>();
+		nextStop.Enqueue(0);
+
+		while (nextStop.Count > 0)
+		{
+			int from = nextStop.Dequeue();
+			foreach (var edge in graph[from])
+			{
+				int to = edge.Key;
+				int segmentCost = edge.Value;
+				int costByNow = costs[from];
+
+				int potentialCost = Math.Max(segmentCost, costByNow);
+				if (costs[to] > potentialCost
+					|| costs[to] == -1)
+				{
+					costs[to] = potentialCost;
+					nextStop.Enqueue(to);
+				}
+			}
+		}
+	}
+
+	private static int GetSegmentCost(int[,] graph, int from, int to)
+	{
+		int segmentCost = graph[from, to];
+		return segmentCost;
+	}
+
+	private static List<KeyValuePair<int, int>>[] BuildGraph(int nodes, int edges)
+	{
+		var graph = new List<KeyValuePair<int, int>>[nodes];
+		for (int i = 0; i < edges; i++)
+		{
+			int[] edgeAndWeight = GetLineNumbers();
+			int e1 = edgeAndWeight[0] - 1,
+				e2 = edgeAndWeight[1] - 1,
+				cost = edgeAndWeight[2];
+			WriteEdge(graph, e1, e2, cost);
+			WriteEdge(graph, e2, e1, cost);
+		}
+
+		return graph;
+	}
+
+	private static void WriteEdge(List<KeyValuePair<int, int>>[] graph, int edge1, int edge2, int cost)
+	{
+		graph[edge1] = graph[edge1] ?? new List<KeyValuePair<int, int>>();
+		graph[edge1].Add(new KeyValuePair<int, int>(edge2, cost));
+	}
+
+	static int[] GetLineNumbers()
+	{
+		return reader.ReadLine().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray();
+	}
+}

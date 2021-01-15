@@ -1,0 +1,44 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+class Solution {
+    static void Main(String[] args) {
+        /* Enter your code here. Read input from STDIN. Print output to STDOUT. Your class should be named Solution */
+        var n = Convert.ToInt32(Console.ReadLine());
+        var d_str = Console.ReadLine().Split(' ');
+        List<ulong> d = new List<ulong>();
+        foreach (string comp in d_str){
+            d.Add(Convert.ToUInt64(comp));
+        }
+        var init = new List<ulong>();
+        for (int i=0; i<64; i++){
+            init.Add(1UL<<i);
+        }
+        var stack = new List<Tuple<int,List<ulong>>>();
+        stack.Add(Tuple.Create(0,init));
+        ulong count = 64UL;
+        while(stack.Any()){
+            var last = stack.Last();
+            var ptr = last.Item1;
+            var cc = last.Item2;
+            if(ptr < n){
+                stack[stack.Count - 1] = Tuple.Create(ptr+1,cc);
+                var ncc = new List<ulong>();
+                ulong union= 0;
+                foreach (ulong c in cc){
+                    if((c & d[ptr])!=0)
+                        union |= c;
+                    else
+                        ncc.Add(c);
+                }
+                if(union != 0)
+                    ncc.Add(union);
+                count += (ulong)ncc.Count;
+                stack.Add(Tuple.Create(ptr+1,ncc));
+            } else
+                stack.RemoveAt(stack.Count - 1);
+        }
+        Console.WriteLine(count);
+    }
+}
